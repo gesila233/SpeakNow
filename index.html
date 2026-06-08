@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Speak Now - AI 场景化英语口语教练</title>
+<!-- Tailwind CSS -->
+<script src="https://modao.cc/agent-py/static/source/js/tailwindcss.js"></script>
+<!-- Iconify -->
+<script src="https://modao.cc/agent-py/static/source/js/iconify-icon.min.js"></script>
+<!-- ECharts -->
+<script src="https://modao.cc/agent-py/static/source/js/echarts.min.js"></script>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+
+        :root {
+            --primary-pink: #FFB7C5;
+            --light-pink: #FFE4E9;
+            --soft-white: #FFF0F5;
+            --text-color: #5D4037;
+        }
+
+        body {
+            background-color: #FDF2F4;
+            color: var(--text-color);
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* 手机容器样式 */
+        .phone-container {
+            width: 375px;
+            height: 812px;
+            background-color: white;
+            border-radius: 40px;
+            box-shadow: 0 20px 50px rgba(255, 183, 197, 0.3);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 8px solid #333;
+        }
+
+        .status-bar {
+            height: 44px;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .page {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .page.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.85) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        @keyframes overlayIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* 治愈系滚动条 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-pink);
+            border-radius: 10px;
+        }
+
+        /* 波纹动效 */
+        .wave-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            height: 40px;
+        }
+
+        .wave-bar {
+            width: 3px;
+            height: 10px;
+            background: var(--primary-pink);
+            border-radius: 2px;
+            animation: wave 1s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% { height: 10px; }
+            50% { height: 30px; }
+        }
+
+        /* 气泡样式 */
+        .bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            margin-bottom: 8px;
+            position: relative;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .bubble-ai {
+            background-color: var(--light-pink);
+            color: var(--text-color);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .bubble-user {
+            background-color: var(--primary-pink);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .correction-tag {
+            background-color: #FFDDE4;
+            color: #D81B60;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            margin-top: -4px;
+            margin-bottom: 12px;
+            align-self: flex-end;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* 玻璃拟态卡片 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .custom-font-title {
+            font-family: 'ZCOOL KuaiLe', cursive;
+        }
+
+        /* 模态弹窗遮罩 */
+        .modal-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            animation: overlayIn 0.25s ease-out;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-card {
+            background: white;
+            width: 88%;
+            max-height: 80%;
+            border-radius: 28px;
+            padding: 24px 20px;
+            box-shadow: 0 20px 60px rgba(255, 183, 197, 0.35);
+            animation: modalIn 0.35s ease-out;
+            overflow-y: auto;
+        }
+
+        .error-highlight {
+            background: linear-gradient(120deg, #FFDDE4 0%, #FFDDE4 40%, #FFB7C5 100%);
+            padding: 0 4px;
+            border-radius: 6px;
+            font-weight: bold;
+            color: #D81B60;
+        }
+
+        .correct-highlight {
+            background: linear-gradient(120deg, #D4EDDA 0%, #A8E6CF 100%);
+            padding: 0 4px;
+            border-radius: 6px;
+            font-weight: bold;
+            color: #155724;
+        }
+
+        /* 进度条 */
+        .progress-bar {
+            height: 8px;
+            border-radius: 10px;
+            background: #FFE4E9;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 10px;
+            background: linear-gradient(90deg, #FFB7C5, #FF7E9D);
+            transition: width 0.8s ease-out;
+        }
+    </style>
+</head>
+<body class="is-mb-ai-setting">
+<div class="phone-container">
+<!-- 状态栏 -->
+<div class="status-bar">
+<span>13:26</span>
+<div class="flex gap-2">
+<iconify-icon icon="mdi:signal"></iconify-icon>
+<iconify-icon icon="mdi:wifi"></iconify-icon>
+<iconify-icon icon="mdi:battery-80"></iconify-icon>
+</div>
+</div>
+<!-- ==================== 页面 1: 登录页 ==================== -->
+<div class="page" id="page-login">
+<div class="flex-1 flex flex-col items-center justify-center px-8" style="background: linear-gradient(180deg, #FFF0F5 0%, #FFE4E9 50%, #FFB7C5 100%); min-height: 100%;">
+<!-- 装饰小元素 -->
+<div class="flex gap-3 mb-4">
+<span class="text-2xl animate-bounce">🐰</span>
+<span class="text-2xl animate-bounce" style="animation-delay:0.15s">🌸</span>
+<span class="text-2xl animate-bounce" style="animation-delay:0.3s">🐱</span>
+<span class="text-2xl animate-bounce" style="animation-delay:0.45s">🌷</span>
+</div>
+<!-- 品牌 Logo -->
+<div class="w-20 h-20 rounded-full bg-white border-4 border-[#FFB7C5] flex items-center justify-center shadow-lg mb-3">
+<iconify-icon class="text-4xl text-[#FF7E9D]" icon="solar:chat-round-call-bold"></iconify-icon>
+</div>
+<h1 class="text-4xl font-bold text-[#FF7E9D] custom-font-title mb-1">Speak Now</h1>
+<p class="text-sm text-gray-500 mb-1">Your AI English Speaking Coach</p>
+<p class="text-base font-bold text-[#D81B60] mb-8">🎯 AI 场景化英语口语教练</p>
+<!-- 登录按钮 -->
+<div class="w-full space-y-3 max-w-xs">
+<button class="w-full py-3.5 rounded-2xl bg-white shadow-md border border-pink-100 font-bold text-[#5D4037] flex items-center justify-center gap-2 hover:shadow-lg hover:border-[#FFB7C5] transition-all active:scale-95" onclick="handleLogin()">
+<iconify-icon class="text-[#FF7E9D]" icon="solar:phone-bold"></iconify-icon>
+使用手机号登录
+</button>
+<button class="w-full py-3.5 rounded-2xl bg-white shadow-md border border-pink-100 font-bold text-[#5D4037] flex items-center justify-center gap-2 hover:shadow-lg hover:border-[#FFB7C5] transition-all active:scale-95" onclick="handleLogin()">
+<iconify-icon class="text-lg" icon="logos:google-icon"></iconify-icon>
+使用 Google 登录
+</button>
+<button class="w-full py-3.5 rounded-2xl bg-white shadow-md border border-pink-100 font-bold text-[#5D4037] flex items-center justify-center gap-2 hover:shadow-lg hover:border-[#FFB7C5] transition-all active:scale-95" onclick="handleLogin()">
+<iconify-icon class="text-lg" icon="logos:apple"></iconify-icon>
+使用 Apple 登录
+</button>
+</div>
+<!-- 跳过登录 -->
+<button class="mt-4 text-xs text-gray-400 hover:text-[#FF7E9D] underline decoration-dotted transition-colors" onclick="skipLogin()">跳过登录，立即体验</button>
+<!-- 底部条款 -->
+<p class="mt-8 text-[10px] text-gray-400 text-center leading-relaxed">
+继续即表示同意 <u class="cursor-pointer hover:text-[#FF7E9D]">服务条款</u> 和 <u class="cursor-pointer hover:text-[#FF7E9D]">隐私政策</u>
+</p>
+<!-- 底部装饰 -->
+<div class="flex gap-2 mt-4 mb-2">
+<span class="text-sm">🌸</span>
+<span class="text-sm">🐰</span>
+<span class="text-sm">🌷</span>
+<span class="text-sm">🐱</span>
+<span class="text-sm">🌸</span>
+</div>
+</div>
+</div>
+<!-- ==================== 页面 2: 场景选择页 ==================== -->
+<div class="page px-5 py-2" id="page-home">
+<div class="flex items-center mt-2 mb-1">
+<button class="p-2 rounded-full hover:bg-pink-50" onclick="switchPage('page-login')">
+<iconify-icon class="text-xl text-gray-500" icon="solar:alt-arrow-left-bold"></iconify-icon>
+</button>
+</div>
+<div class="flex flex-col items-center mt-1">
+<div class="relative">
+<img alt="Speak Now Logo Mascot" class="w-20 h-20 rounded-full border-4 border-[#FFB7C5] bg-white p-1" src="https://modao.cc/agent-py/media/user_assets/2026-06-07/88e0da7e6fd149e3899f475fa760bd0c.png"/>
+<span class="absolute -top-2 -right-2 text-2xl">💖</span>
+</div>
+<h1 class="text-3xl font-bold mt-2 text-[#FF7E9D] custom-font-title">Speak Now</h1>
+<p class="text-sm text-gray-500 mt-1">AI 场景化英语口语教练 ✨</p>
+</div>
+<div class="mt-8">
+<h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+<iconify-icon class="text-yellow-400" icon="fluent:star-edit-24-filled"></iconify-icon>
+                    选择练习场景
+                </h2>
+<div class="grid grid-cols-2 gap-4">
+<!-- 面试 -->
+<div class="bg-[#FFF0F5] p-4 rounded-3xl border-2 border-transparent hover:border-[#FFB7C5] transition-all cursor-pointer group" onclick="startPractice('面试')">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
+<iconify-icon class="text-3xl text-[#FF7E9D]" icon="solar:user-speak-bold"></iconify-icon>
+</div>
+<h3 class="font-bold text-base">面试</h3>
+<p class="text-[10px] text-gray-400 mt-1 leading-tight">AI 扮演 HR 提供专业面试提问</p>
+</div>
+<!-- 点餐 -->
+<div class="bg-[#F0FFF4] p-4 rounded-3xl border-2 border-transparent hover:border-[#4ADE80] transition-all cursor-pointer group" onclick="startPractice('点餐')">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
+<iconify-icon class="text-3xl text-[#4ADE80]" icon="solar:tea-cup-bold"></iconify-icon>
+</div>
+<h3 class="font-bold text-base">点餐</h3>
+<p class="text-[10px] text-gray-400 mt-1 leading-tight">模拟点单、推荐菜品与结账</p>
+</div>
+<!-- 会议 -->
+<div class="bg-[#F0F7FF] p-4 rounded-3xl border-2 border-transparent hover:border-[#60A5FA] transition-all cursor-pointer group" onclick="startPractice('会议')">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
+<iconify-icon class="text-3xl text-[#60A5FA]" icon="solar:users-group-rounded-bold"></iconify-icon>
+</div>
+<h3 class="font-bold text-base">会议</h3>
+<p class="text-[10px] text-gray-400 mt-1 leading-tight">职场议题讨论与观点碰撞</p>
+</div>
+<!-- 旅行 -->
+<div class="bg-[#FFF8F0] p-4 rounded-3xl border-2 border-transparent hover:border-[#FBBF24] transition-all cursor-pointer group" onclick="startPractice('旅行')">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
+<iconify-icon class="text-3xl text-[#FBBF24]" icon="solar:suitcase-tag-bold"></iconify-icon>
+</div>
+<h3 class="font-bold text-base">旅行</h3>
+<p class="text-[10px] text-gray-400 mt-1 leading-tight">模拟过海关、问路与租车</p>
+</div>
+<!-- 酒店 -->
+<div class="bg-[#F5F3FF] p-4 rounded-3xl border-2 border-transparent hover:border-[#A78BFA] transition-all cursor-pointer group" onclick="startPractice('酒店')">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
+<iconify-icon class="text-3xl text-[#A78BFA]" icon="solar:bed-bold"></iconify-icon>
+</div>
+<h3 class="font-bold text-base">酒店</h3>
+<p class="text-[10px] text-gray-400 mt-1 leading-tight">办理入住、退房与客房服务</p>
+</div>
+<!-- 其他 -->
+<div class="bg-gray-50 p-4 rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-all">
+<iconify-icon class="text-3xl text-gray-300" icon="heroicons:plus-circle-20-solid"></iconify-icon>
+<span class="text-sm font-bold text-gray-400 mt-1">其他</span>
+</div>
+</div>
+</div>
+<!-- 底部导航入口 -->
+<div class="mt-auto mb-6 bg-[#FFE4E9] p-4 rounded-3xl flex items-center justify-between">
+<div class="flex items-center gap-3">
+<img alt="User Avatar" class="w-12 h-12 rounded-full border-2 border-white" src="https://modao.cc/agent-py/media/user_assets/2026-06-07/7548122351e940d48fb3f3f01b0f4aa3.png"/>
+<div>
+<p class="text-xs text-gray-500">我的成长画像</p>
+<p class="font-bold text-sm">口语达人 · Lv.5</p>
+</div>
+</div>
+<button class="bg-white p-2 rounded-full shadow-sm text-[#FF7E9D]" onclick="switchPage('page-growth')">
+<iconify-icon class="text-2xl" icon="solar:chart-2-bold"></iconify-icon>
+</button>
+</div>
+</div>
+<!-- ==================== 页面 3: 对话练习页 ==================== -->
+<div class="page" id="page-chat">
+<!-- 对话头部 -->
+<div class="flex items-center justify-between px-4 py-3 border-b border-pink-50 bg-white sticky top-0 z-10">
+<button class="p-2 rounded-full hover:bg-gray-100" onclick="goBack()">
+<iconify-icon class="text-xl" icon="solar:alt-arrow-left-bold"></iconify-icon>
+</button>
+<div class="flex flex-col items-center">
+<span class="font-bold" id="current-scene-name">会议练习</span>
+<div class="flex items-center gap-1 text-[10px] text-green-500">
+<span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                        AI 教练在线中
+                    </div>
+</div>
+<div class="relative group">
+<button class="bg-[#FFF0F5] px-3 py-1 rounded-full text-xs text-[#FF7E9D] flex items-center gap-1 font-bold">
+                        即时模式
+                        <iconify-icon icon="solar:alt-arrow-down-bold"></iconify-icon>
+</button>
+<div class="hidden group-hover:block absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-lg border border-pink-50 p-1 z-20">
+<div class="p-2 text-[10px] hover:bg-pink-50 rounded-lg cursor-pointer">沉浸模式</div>
+<div class="p-2 text-[10px] bg-pink-50 text-[#FF7E9D] rounded-lg cursor-pointer font-bold">即时模式</div>
+<div class="p-2 text-[10px] hover:bg-pink-50 rounded-lg cursor-pointer">柔和模式</div>
+</div>
+</div>
+</div>
+<!-- 聊天区域 -->
+<div class="flex-1 p-4 flex flex-col overflow-y-auto bg-[#FFFBFC]" id="chat-messages">
+<div class="bubble bubble-ai">
+                    Hi! I'm your AI interview coach. Let's start practicing! Can you tell me why you're interested in this position? 🐰
+                </div>
+<div class="bubble bubble-user">
+                    I very like this company because you have great culture.
+                </div>
+<div class="correction-tag cursor-pointer" onclick="showErrorCorrection('page-chat')">
+<iconify-icon icon="solar:lightbulb-bold"></iconify-icon>
+                    💡 查看纠错建议（点击展开详情）
+                </div>
+<div class="bubble bubble-ai">
+                    That's great! We value our culture a lot. What kind of experience do you have as an engineer?
+                </div>
+<div class="bubble bubble-user">
+                    I worked as a engineer for three years.
+                </div>
+<div class="correction-tag cursor-pointer" onclick="showErrorCorrection('page-chat')">
+<iconify-icon icon="solar:lightbulb-bold"></iconify-icon>
+                    💡 查看纠错建议（点击展开详情）
+                </div>
+<!-- 打字/波形占位 -->
+<div class="flex items-center gap-2 mb-4 hidden" id="ai-typing">
+<div class="bubble bubble-ai flex items-center gap-1 py-2 px-3">
+<span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+<span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+<span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+</div>
+</div>
+<div class="bubble bubble-ai">That was very clear! Let's continue. What are your strengths? 🌸</div><div class="bubble bubble-ai">That was very clear! Let's continue. What are your strengths? 🌸</div></div>
+<!-- 底部操作区 -->
+<div class="p-4 bg-white border-t border-pink-50">
+<div class="flex flex-col items-center gap-3">
+<!-- 波形动效 -->
+<div class="wave-container invisible" id="voice-wave">
+<div class="wave-bar" style="animation-delay: 0s"></div>
+<div class="wave-bar" style="animation-delay: 0.1s"></div>
+<div class="wave-bar" style="animation-delay: 0.2s"></div>
+<div class="wave-bar" style="animation-delay: 0.3s"></div>
+<div class="wave-bar" style="animation-delay: 0.4s"></div>
+<div class="wave-bar" style="animation-delay: 0.5s"></div>
+<div class="wave-bar" style="animation-delay: 0.6s"></div>
+</div>
+<div class="flex items-center w-full gap-3">
+<button class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500" onclick="showErrorCorrection('page-chat')">
+<iconify-icon class="text-xl" icon="solar:clipboard-check-bold"></iconify-icon>
+</button>
+<button class="flex-1 h-14 rounded-full bg-gradient-to-r from-[#FF9A8B] to-[#FFB7C5] flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform" id="mic-btn" onmousedown="startMic()" onmouseup="stopMic()">
+<iconify-icon class="text-2xl mr-2" icon="solar:microphone-bold"></iconify-icon>
+<span class="font-bold">按住 说话</span>
+</button>
+<button class="w-10 h-10 rounded-full bg-[#FFE4E9] flex items-center justify-center text-[#FF7E9D]" onclick="finishPractice()">
+<iconify-icon class="text-xl" icon="solar:flag-bold"></iconify-icon>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- ==================== 纠错弹窗（模态） ==================== -->
+<div class="modal-overlay" id="error-correction-modal">
+<div class="modal-card">
+<!-- 标题 -->
+<div class="text-center mb-5">
+<span class="text-2xl">🌸</span>
+<h3 class="text-lg font-bold text-[#FF7E9D] custom-font-title mt-1">纠错提示</h3>
+<p class="text-[10px] text-gray-400">Error Correction</p>
+</div>
+<!-- 错误句子示例 1 -->
+<div class="bg-pink-50 rounded-2xl p-4 mb-3">
+<div class="flex items-center gap-2 mb-2">
+<iconify-icon class="text-[#D81B60] text-lg" icon="solar:danger-circle-bold"></iconify-icon>
+<span class="text-xs font-bold text-[#D81B60]">错误句子</span>
+</div>
+<p class="text-sm mb-1">I <span class="error-highlight">very like</span> this company.</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-[10px] bg-white px-2 py-0.5 rounded-full text-[#D81B60] border border-pink-200">语法错误 · 副词位置不当</span>
+</div>
+</div>
+<!-- 正确写法 1 -->
+<div class="bg-green-50 rounded-2xl p-4 mb-4">
+<div class="flex items-center gap-2 mb-2">
+<iconify-icon class="text-[#28A745] text-lg" icon="solar:check-circle-bold"></iconify-icon>
+<span class="text-xs font-bold text-[#28A745]">💡 建议写法</span>
+</div>
+<p class="text-sm">✅ I <span class="correct-highlight">really like</span> this company.</p>
+</div>
+<!-- 错误句子示例 2 -->
+<div class="bg-pink-50 rounded-2xl p-4 mb-3">
+<div class="flex items-center gap-2 mb-2">
+<iconify-icon class="text-[#D81B60] text-lg" icon="solar:danger-circle-bold"></iconify-icon>
+<span class="text-xs font-bold text-[#D81B60]">错误句子</span>
+</div>
+<p class="text-sm mb-1"><span class="error-highlight">A engineer</span> must be careful.</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="text-[10px] bg-white px-2 py-0.5 rounded-full text-[#D81B60] border border-pink-200">语法错误 · 冠词使用错误</span>
+</div>
+</div>
+<!-- 正确写法 2 -->
+<div class="bg-green-50 rounded-2xl p-4 mb-5">
+<div class="flex items-center gap-2 mb-2">
+<iconify-icon class="text-[#28A745] text-lg" icon="solar:check-circle-bold"></iconify-icon>
+<span class="text-xs font-bold text-[#28A745]">💡 建议写法</span>
+</div>
+<p class="text-sm">✅ <span class="correct-highlight">An engineer</span> must be careful.</p>
+</div>
+<!-- 底部按钮 -->
+<div class="flex gap-3">
+<button class="flex-1 py-3 rounded-2xl bg-[#FFE4E9] text-[#FF7E9D] font-bold text-sm hover:bg-[#FFD0D8] transition-all active:scale-95" onclick="closeErrorCorrection()">我知道了</button>
+</div>
+</div>
+</div>
+<!-- ==================== 页面 4: 复盘报告页 ==================== -->
+<div class="page bg-[#FFFBFC]" id="page-report">
+<div class="px-5 py-6">
+<div class="flex items-center justify-between mb-6">
+<button class="text-gray-400" onclick="goBack()">
+<iconify-icon class="text-3xl" icon="solar:close-circle-bold"></iconify-icon>
+</button>
+<h2 class="text-xl font-bold custom-font-title text-[#FF7E9D]">课后深度总结</h2>
+<div class="w-8"></div>
+</div>
+<div class="bg-white rounded-3xl p-6 shadow-sm mb-6 flex flex-col items-center">
+<div class="flex items-center gap-2 mb-2">
+<img alt="Chikawa Mascot" class="w-12 h-12" src="https://modao.cc/agent-py/media/user_assets/2026-06-07/7aabd70c9077411c82b0d68ff8f57670.png"/>
+<span class="text-sm font-bold bg-pink-100 text-[#FF7E9D] px-3 py-1 rounded-full">太棒了！继续加油 🌸</span>
+</div>
+<!-- 雷达图容器 -->
+<div _echarts_instance_="ec_1780839534977" class="w-full h-64" id="radar-chart" style="user-select: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0);"><div style="position: relative; width: 267px; height: 256px; padding: 0px; margin: 0px; border-width: 0px; cursor: default;"><canvas class="" data-zr-dom-id="zr_0" height="384" style="position: absolute; left: 0px; top: 0px; width: 267px; height: 256px; user-select: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0); padding: 0px; margin: 0px; border-width: 0px;" width="400"></canvas></div></div>
+</div>
+<!-- 高频错误追踪 -->
+<div class="mb-6">
+<h3 class="font-bold text-base mb-3 flex items-center gap-2">
+<iconify-icon class="text-[#FF7E9D]" icon="solar:ranking-bold"></iconify-icon>
+                        高频顽固错误追踪
+                    </h3>
+<div class="space-y-3">
+<div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-red-400">
+<div class="flex justify-between items-center mb-1">
+<span class="font-bold text-sm">1. 冠词错误 (a/an/the)</span>
+<span class="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded">出现 5 次</span>
+</div>
+<p class="text-[10px] text-gray-400">建议：注意名词前的元音发音，使用 an 而非 a。</p>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-orange-400">
+<div class="flex justify-between items-center mb-1">
+<span class="font-bold text-sm">2. 一般过去时态混淆</span>
+<span class="text-xs bg-orange-50 text-orange-500 px-2 py-0.5 rounded">出现 3 次</span>
+</div>
+<p class="text-[10px] text-gray-400">建议：描述过去经历时请使用动词过去式。</p>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-yellow-400">
+<div class="flex justify-between items-center mb-1">
+<span class="font-bold text-sm">3. 介词搭配不当</span>
+<span class="text-xs bg-yellow-50 text-yellow-500 px-2 py-0.5 rounded">出现 3 次</span>
+</div>
+<p class="text-[10px] text-gray-400">建议：注意 "interested in", "depend on" 等固定搭配。</p>
+</div>
+</div>
+<p class="text-[10px] text-gray-400 mt-3 text-center italic">✨ 闭环复训：下次练习 AI 将诱导你练习这些语法点</p>
+</div>
+<!-- 智能错误归因 -->
+<div class="mb-8">
+<h3 class="font-bold text-base mb-3">智能错误归因</h3>
+<div class="space-y-3">
+<div class="bg-pink-50 p-4 rounded-2xl">
+<div class="flex items-center gap-2 mb-2">
+<span class="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[10px] font-bold">1</span>
+<span class="text-xs font-bold">"I very like this company."</span>
+</div>
+<div class="text-[10px] flex items-center gap-2">
+<span class="text-gray-500">归类：</span>
+<span class="bg-white px-2 py-0.5 rounded text-[#FF7E9D]">【语法错误 · 副词位置不当】</span>
+</div>
+</div>
+<div class="bg-pink-50 p-4 rounded-2xl">
+<div class="flex items-center gap-2 mb-2">
+<span class="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[10px] font-bold">2</span>
+<span class="text-xs font-bold">"a engineer"</span>
+</div>
+<div class="text-[10px] flex items-center gap-2">
+<span class="text-gray-500">归类：</span>
+<span class="bg-white px-2 py-0.5 rounded text-[#FF7E9D]">【语法错误 · 冠词使用错误】</span>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 pb-8">
+<button class="py-4 bg-[#FFE4E9] text-[#FF7E9D] rounded-2xl font-bold text-sm" onclick="switchPage('page-home')">返回首页</button>
+<button class="py-4 bg-gradient-to-r from-[#FF9A8B] to-[#FFB7C5] text-white rounded-2xl font-bold text-sm shadow-md" onclick="switchPage('page-growth')">查看成长画像</button>
+</div>
+</div>
+</div>
+<!-- ==================== 页面 5: 成长画像页 ==================== -->
+<div class="page bg-[#FFFBFC] active" id="page-growth">
+<div class="px-5 py-6 overflow-y-auto">
+<!-- 顶部返回 -->
+<div class="flex items-center justify-between mb-4">
+<button class="text-gray-400" onclick="goBack()">
+<iconify-icon class="text-3xl" icon="solar:close-circle-bold"></iconify-icon>
+</button>
+<h2 class="text-xl font-bold custom-font-title text-[#FF7E9D]">我的成长画像</h2>
+<div class="w-8"></div>
+</div>
+<!-- 用户信息 -->
+<div class="flex items-center gap-4 mb-6 bg-white p-4 rounded-3xl shadow-sm">
+<img alt="User Avatar" class="w-16 h-16 rounded-full border-3 border-[#FFB7C5]" src="https://modao.cc/agent-py/media/user_assets/2026-06-07/0545b40172a849e69166e9f2a51f04f8.png"/>
+<div>
+<p class="font-bold text-base">口语达人</p>
+<p class="text-xs text-gray-400">Lv.5 · 持续进步中 🌸</p>
+</div>
+</div>
+<!-- 训练总览统计卡片（3个横向卡片） -->
+<div class="grid grid-cols-3 gap-3 mb-6">
+<div class="bg-white p-4 rounded-2xl shadow-sm flex flex-col items-center text-center">
+<span class="text-2xl mb-1">🗓️</span>
+<span class="text-xl font-bold text-[#FF7E9D]">12</span>
+<span class="text-[10px] text-gray-400">累计训练天数</span>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm flex flex-col items-center text-center">
+<span class="text-2xl mb-1">🎯</span>
+<span class="text-xl font-bold text-[#FF7E9D]">48</span>
+<span class="text-[10px] text-gray-400">完成训练次数</span>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm flex flex-col items-center text-center">
+<span class="text-2xl mb-1">📈</span>
+<span class="text-xl font-bold text-[#FF7E9D]">5</span>
+<span class="text-[10px] text-gray-400">连续打卡天数</span>
+</div>
+</div>
+<!-- 五维能力趋势图 -->
+<!-- KPI 指标卡片 -->
+<div class="mb-6">
+<h3 class="font-bold text-sm mb-3 flex items-center gap-2">
+<iconify-icon class="text-[#FF7E9D]" icon="solar:clipboard-check-bold"></iconify-icon>
+                    KPI 核心指标
+                </h3>
+<div class="space-y-3">
+<div class="bg-white p-4 rounded-2xl shadow-sm">
+<div class="flex justify-between items-center mb-1">
+<span class="text-xs font-bold">训练完成率</span>
+<span class="text-sm font-bold text-[#FF7E9D]">85%</span>
+</div>
+<div class="progress-bar"><div class="progress-bar-fill" style="width: 85%"></div></div>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm flex justify-between items-center">
+<div>
+<span class="text-xs font-bold">平均对话轮数</span>
+<p class="text-sm font-bold text-[#FF7E9D]">6.2 轮/次</p>
+</div>
+<span class="text-xs text-green-500 flex items-center gap-1">
+<iconify-icon icon="solar:arrow-up-bold"></iconify-icon> +12%
+</span>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm">
+<div class="flex justify-between items-center mb-1">
+<span class="text-xs font-bold">错误修正率</span>
+<span class="text-sm font-bold text-[#FF7E9D]">67%</span>
+</div>
+<div class="progress-bar"><div class="progress-bar-fill" style="width: 67%"></div></div>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm flex justify-between items-center">
+<div>
+<span class="text-xs font-bold">流畅度提升率</span>
+<p class="text-sm font-bold text-[#FF7E9D]">WPM 提升 23%</p>
+</div>
+<span class="text-xs text-green-500 flex items-center gap-1">
+<iconify-icon icon="solar:arrow-up-bold"></iconify-icon> +23%
+</span>
+</div>
+</div>
+</div>
+<!-- 高频错误历史 -->
+<div class="mb-8">
+<h3 class="font-bold text-sm mb-3 flex items-center gap-2">
+<iconify-icon class="text-[#FF7E9D]" icon="solar:list-cross-bold"></iconify-icon>
+                    高频错误历史 Top3
+                </h3>
+<div class="space-y-3">
+<div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-red-400">
+<div class="flex justify-between items-center mb-1">
+<span class="font-bold text-sm">🔴 冠词错误</span>
+<span class="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded">累计 23 次</span>
+</div>
+<div class="flex items-center gap-1 text-[10px]">
+<span class="text-gray-400">最近5次趋势：</span>
+<span class="text-green-500 flex items-center gap-0.5"><iconify-icon icon="solar:arrow-down-bold"></iconify-icon> 下降中</span>
+</div>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-yellow-400">
+<div class="flex justify-between items-center mb-1">
+<span class="font-bold text-sm">🟡 介词搭配不当</span>
+<span class="text-xs bg-yellow-50 text-yellow-500 px-2 py-0.5 rounded">累计 15 次</span>
+</div>
+<div class="flex items-center gap-1 text-[10px]">
+<span class="text-gray-400">最近5次趋势：</span>
+<span class="text-red-500 flex items-center gap-0.5"><iconify-icon icon="solar:arrow-up-bold"></iconify-icon> 上升中</span>
+</div>
+</div>
+<div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-green-400">
+<div class="flex justify-between items-center mb-1">
+<span class="font-bold text-sm">🟢 时态混淆</span>
+<span class="text-xs bg-green-50 text-green-500 px-2 py-0.5 rounded">累计 12 次</span>
+</div>
+<div class="flex items-center gap-1 text-[10px]">
+<span class="text-gray-400">最近5次趋势：</span>
+<span class="text-gray-500 flex items-center gap-0.5"><iconify-icon icon="solar:alt-arrow-right-bold"></iconify-icon> 持平</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 返回首页 -->
+<button class="w-full py-4 bg-gradient-to-r from-[#FF9A8B] to-[#FFB7C5] text-white rounded-2xl font-bold text-sm shadow-md mb-4 active:scale-95 transition-transform" onclick="switchPage('page-home')">
+            返回首页继续练习 🌸
+        </button>
+</div>
+</div>
+</div>
+<script>
+        // 页面导航历史栈
+        let pageHistory = [];
+
+        // 页面切换逻辑
+        function switchPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            
+            if (pageId === 'page-report') {
+                setTimeout(initRadarChart, 100);
+            }
+            if (pageId === 'page-growth') {
+                setTimeout(initGrowthChart, 100);
+            }
+        }
+
+        // 带历史记录的页面切换
+        function navigateTo(pageId) {
+            const currentPage = document.querySelector('.page.active');
+            if (currentPage) {
+                pageHistory.push(currentPage.id);
+            }
+            switchPage(pageId);
+        }
+
+        // 返回上一页
+        function goBack() {
+            if (pageHistory.length > 0) {
+                const prevPage = pageHistory.pop();
+                switchPage(prevPage);
+            } else {
+                switchPage('page-home');
+            }
+        }
+
+        // 登录处理
+        function handleLogin() {
+            navigateTo('page-home');
+        }
+
+        // 跳过登录
+        function skipLogin() {
+            pageHistory = [];
+            switchPage('page-home');
+        }
+
+        // 开始练习
+        function startPractice(scene) {
+            document.getElementById('current-scene-name').innerText = scene + '练习';
+            navigateTo('page-chat');
+        }
+
+        // 麦克风模拟
+        function startMic() {
+            document.getElementById('voice-wave').classList.remove('invisible');
+            document.getElementById('mic-btn').classList.add('scale-95');
+        }
+
+        function stopMic() {
+            document.getElementById('voice-wave').classList.add('invisible');
+            document.getElementById('mic-btn').classList.remove('scale-95');
+            
+            // 模拟发送和回复
+            const chatBox = document.getElementById('chat-messages');
+            const typing = document.getElementById('ai-typing');
+            
+            typing.classList.remove('hidden');
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            setTimeout(() => {
+                typing.classList.add('hidden');
+                const aiBubble = document.createElement('div');
+                aiBubble.className = 'bubble bubble-ai';
+                aiBubble.innerText = 'That was very clear! Let\'s continue. What are your strengths? 🌸';
+                chatBox.appendChild(aiBubble);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }, 1500);
+        }
+
+        // 结束练习
+        function finishPractice() {
+            navigateTo('page-report');
+        }
+
+        // 显示纠错弹窗
+        function showErrorCorrection(sourcePageId) {
+            const modal = document.getElementById('error-correction-modal');
+            modal.classList.add('active');
+        }
+
+        // 关闭纠错弹窗
+        function closeErrorCorrection() {
+            const modal = document.getElementById('error-correction-modal');
+            modal.classList.remove('active');
+        }
+
+        // 初始化雷达图
+        function initRadarChart() {
+            const chartDom = document.getElementById('radar-chart');
+            if (!chartDom) return;
+            const myChart = echarts.init(chartDom);
+            const option = {
+                radar: {
+                    indicator: [
+                        { name: '发音 (82)', max: 100 },
+                        { name: '语法 (75)', max: 100 },
+                        { name: '流利度 (88)', max: 100 },
+                        { name: '词汇 (70)', max: 100 },
+                        { name: '场景表达 (84)', max: 100 }
+                    ],
+                    shape: 'circle',
+                    splitNumber: 4,
+                    axisName: {
+                        color: '#5D4037',
+                        fontSize: 10
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: '#FFE4E9'
+                        }
+                    },
+                    splitArea: {
+                        areaStyle: {
+                            color: ['#FFF0F5', '#FFF']
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: '#FFE4E9'
+                        }
+                    }
+                },
+                series: [
+                    {
+                        name: '能力评估',
+                        type: 'radar',
+                        data: [
+                            {
+                                value: [82, 75, 88, 70, 84],
+                                name: '当前水平',
+                                areaStyle: {
+                                    color: 'rgba(255, 183, 197, 0.6)'
+                                },
+                                lineStyle: {
+                                    color: '#FF7E9D',
+                                    width: 2
+                                },
+                                itemStyle: {
+                                    color: '#FF7E9D'
+                                }
+                            }
+                        ]
+                    }
+                ]
+            };
+            myChart.setOption(option);
+        }
+
+        // 初始化成长画像趋势图
+        function initGrowthChart() {
+            const chartDom = document.getElementById('growth-trend-chart');
+            if (!chartDom) return;
+            const myChart = echarts.init(chartDom);
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(255,255,255,0.95)',
+                    borderColor: '#FFB7C5',
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    textStyle: { fontSize: 10, color: '#5D4037' }
+                },
+                legend: {
+                    data: ['发音', '语法', '流利度', '词汇', '场景表达'],
+                    orient: 'horizontal',
+                    left: 'center',
+                    top: 0,
+                    textStyle: { fontSize: 9, color: '#5D4037' },
+                    itemWidth: 12,
+                    itemHeight: 8
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    top: '22%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: ['第1次', '第2次', '第3次', '第4次', '第5次'],
+                    axisLabel: { fontSize: 9, color: '#999' },
+                    axisLine: { lineStyle: { color: '#FFE4E9' } },
+                    axisTick: { show: false }
+                },
+                yAxis: {
+                    type: 'value',
+                    min: 50,
+                    max: 100,
+                    splitLine: { lineStyle: { color: '#FFF0F5', type: 'dashed' } },
+                    axisLabel: { fontSize: 9, color: '#999' }
+                },
+                series: [
+                    {
+                        name: '发音',
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 6,
+                        lineStyle: { width: 2, color: '#FF7E9D' },
+                        itemStyle: { color: '#FF7E9D' },
+                        areaStyle: { color: 'rgba(255, 126, 157, 0.1)' },
+                        data: [75, 78, 80, 82, 85]
+                    },
+                    {
+                        name: '语法',
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 6,
+                        lineStyle: { width: 2, color: '#60A5FA' },
+                        itemStyle: { color: '#60A5FA' },
+                        areaStyle: { color: 'rgba(96, 165, 250, 0.1)' },
+                        data: [60, 65, 68, 72, 75]
+                    },
+                    {
+                        name: '流利度',
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 6,
+                        lineStyle: { width: 2, color: '#4ADE80' },
+                        itemStyle: { color: '#4ADE80' },
+                        areaStyle: { color: 'rgba(74, 222, 128, 0.1)' },
+                        data: [78, 80, 83, 86, 88]
+                    },
+                    {
+                        name: '词汇',
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 6,
+                        lineStyle: { width: 2, color: '#FBBF24' },
+                        itemStyle: { color: '#FBBF24' },
+                        areaStyle: { color: 'rgba(251, 191, 36, 0.1)' },
+                        data: [58, 62, 65, 68, 70]
+                    },
+                    {
+                        name: '场景表达',
+                        type: 'line',
+                        smooth: true,
+                        symbol: 'circle',
+                        symbolSize: 6,
+                        lineStyle: { width: 2, color: '#A78BFA' },
+                        itemStyle: { color: '#A78BFA' },
+                        areaStyle: { color: 'rgba(167, 139, 250, 0.1)' },
+                        data: [70, 74, 78, 80, 84]
+                    }
+                ]
+            };
+            myChart.setOption(option);
+            
+            // 自适应
+            window.addEventListener('resize', () => myChart.resize());
+        }
+
+        // 点击弹窗外部关闭
+        document.getElementById('error-correction-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeErrorCorrection();
+            }
+        });
+    </script>
+</body></html>
